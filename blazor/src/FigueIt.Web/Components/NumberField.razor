@@ -1,0 +1,24 @@
+@using System.Globalization
+@* A numeric box. Half-typed text such as "-" or "1e" is ignored until it is a number. *@
+<label class="field">
+    <span class="field-label">@Label</span>
+    <input type="number" step="any" inputmode="decimal"
+           class="@(Error is null ? null : "invalid")"
+           value="@Value.ToString(CultureInfo.InvariantCulture)" @oninput="OnInput" />
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <span class="field-error">@Error</span>
+    }
+</label>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public double Value { get; set; }
+    [Parameter] public EventCallback<double> ValueChanged { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private Task OnInput(ChangeEventArgs e) =>
+        double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v)
+            ? ValueChanged.InvokeAsync(v)
+            : Task.CompletedTask;
+}

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FigueIt.Engine/FigueIt.Engine.csproj" />
+    <Project Path="src/FigueIt.Web/FigueIt.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FigueIt.Engine.Tests/FigueIt.Engine.Tests.csproj" />
+  </Folder>
+</Solution>

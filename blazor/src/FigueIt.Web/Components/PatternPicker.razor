@@ -1,0 +1,36 @@
+@using FigueIt.Engine
+@using FigueIt.Web.Models
+
+<section class="card">
+    <h2>Pattern</h2>
+    <div class="pattern-list">
+        @foreach (var id in Patterns.All)
+        {
+            var applicable = Paver is not { } paver || Patterns.IsApplicable(id, paver);
+            <label class="pattern @(applicable ? null : "disabled")">
+                <input type="radio" name="pattern" checked="@(State.Pattern == id)" disabled="@(!applicable)"
+                       @onchange="() => Select(id)" />
+                <span>@id.Label()</span>
+                @if (!applicable)
+                {
+                    <small class="note">needs a 2:1 paver</small>
+                }
+            </label>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AppState State { get; set; } = null!;
+
+    /// <summary>The current paver, or null while its fields are invalid (then every pattern is offered).</summary>
+    [Parameter] public Paver? Paver { get; set; }
+
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    private Task Select(PatternId id)
+    {
+        State.Pattern = id;
+        return OnChange.InvokeAsync();
+    }
+}

@@ -1,0 +1,81 @@
+{
+  "parse": [
+    { "input": "12'6\"", "defaultUnit": "ft", "inches": 150 },
+    { "input": "12' 6\"", "defaultUnit": "ft", "inches": 150 },
+    { "input": "12ft 6in", "defaultUnit": "ft", "inches": 150 },
+    { "input": "12 ft 6 in", "defaultUnit": "in", "inches": 150 },
+    { "input": "12.5'", "defaultUnit": "in", "inches": 150 },
+    { "input": "150\"", "defaultUnit": "ft", "inches": 150 },
+    { "input": "12-6", "defaultUnit": "in", "inches": 150 },
+    { "input": "12' 6", "defaultUnit": "in", "inches": 150 },
+    { "input": "12", "defaultUnit": "ft", "inches": 144 },
+    { "input": "12", "defaultUnit": "in", "inches": 12 },
+    { "input": "8 in", "defaultUnit": "ft", "inches": 8 },
+    { "input": "3 ft", "defaultUnit": "in", "inches": 36 },
+    { "input": "3/8\"", "defaultUnit": "ft", "inches": 0.375 },
+    { "input": "12' 6 1/2\"", "defaultUnit": "ft", "inches": 150.5 },
+    { "input": "4 1/2 in", "defaultUnit": "ft", "inches": 4.5 },
+    { "input": "2.5m", "defaultUnit": "ft", "inches": 98.4251968504 },
+    { "input": "30 cm", "defaultUnit": "ft", "inches": 11.8110236220 },
+    { "input": "300mm", "defaultUnit": "ft", "inches": 11.8110236220 },
+    { "input": "", "defaultUnit": "ft", "inches": null },
+    { "input": "abc", "defaultUnit": "ft", "inches": null },
+    { "input": "-5", "defaultUnit": "ft", "inches": null },
+    { "input": "12\" 6", "defaultUnit": "ft", "inches": null },
+    { "input": "12 6", "defaultUnit": "ft", "inches": null }
+  ],
+  "shapes": [
+    { "name": "rectangle 12x8 ft", "shape": { "type": "rectangle", "w": "12'", "h": "8'" }, "areaSqFt": 96, "perimeterIn": 480 },
+    { "name": "triangle 3-4-5 ft", "shape": { "type": "triangle", "a": "3'", "b": "4'", "c": "5'" }, "areaSqFt": 6, "perimeterIn": 144 },
+    { "name": "right triangle via 5-3-4", "shape": { "type": "triangle", "a": "5'", "b": "3'", "c": "4'" }, "areaSqFt": 6, "perimeterIn": 144 },
+    { "name": "L-shape 20x15 with 8x6 notch", "shape": { "type": "lshape", "w": "20'", "h": "15'", "nw": "8'", "nh": "6'" }, "areaSqFt": 252, "perimeterIn": 840 },
+    { "name": "trapezoid 12/8 x 10", "shape": { "type": "trapezoid", "b1": "12'", "b2": "8'", "h": "10'" }, "areaSqFt": 100, "perimeterIn": null },
+    { "name": "clockwise polygon is normalised", "shape": { "type": "polygon", "points": [[0, 0], [0, 120], [120, 120], [120, 0]] }, "areaSqFt": 100, "perimeterIn": 480 },
+    { "name": "impossible triangle", "shape": { "type": "triangle", "a": "1'", "b": "1'", "c": "5'" }, "invalid": true }
+  ],
+  "layouts": [
+    {
+      "name": "12x8 ft, 12in squares, stack - perfect fit",
+      "shape": { "type": "rectangle", "w": "12'", "h": "8'" },
+      "paver": { "length": 12, "width": 12, "joint": 0 },
+      "pattern": "stack", "rotation": 0, "offset": [0, 0],
+      "full": 96, "cut": 0
+    },
+    {
+      "name": "10x10 ft, 8x4 pavers, running bond (hand counted)",
+      "shape": { "type": "rectangle", "w": "10'", "h": "10'" },
+      "paver": { "length": 8, "width": 4, "joint": 0 },
+      "pattern": "running", "rotation": 0, "offset": [0, 0],
+      "full": 435, "cut": 30
+    },
+    {
+      "name": "4x4 ft, 8x4 pavers, basketweave - perfect fit",
+      "shape": { "type": "rectangle", "w": "4'", "h": "4'" },
+      "paver": { "length": 8, "width": 4, "joint": 0 },
+      "pattern": "basketweave", "rotation": 0, "offset": [0, 0],
+      "full": 72, "cut": 0
+    },
+    {
+      "name": "10x10 ft, 12in squares with 1/2in joints, stack (hand counted)",
+      "shape": { "type": "rectangle", "w": "10'", "h": "10'" },
+      "paver": { "length": 12, "width": 12, "joint": 0.5 },
+      "pattern": "stack", "rotation": 0, "offset": [0, 0],
+      "full": 81, "cut": 19
+    },
+    {
+      "name": "right triangle 4x3 ft, 1 ft squares, stack (hand counted)",
+      "shape": { "type": "triangle", "a": "5'", "b": "3'", "c": "4'" },
+      "paver": { "length": 12, "width": 12, "joint": 0 },
+      "pattern": "stack", "rotation": 0, "offset": [0, 0],
+      "full": 3, "cut": 6
+    }
+  ],
+  "applicability": [
+    { "paver": { "length": 8, "width": 4, "joint": 0.125 }, "pattern": "herringbone", "applicable": true },
+    { "paver": { "length": 8, "width": 4, "joint": 0 }, "pattern": "basketweave", "applicable": true },
+    { "paver": { "length": 12, "width": 12, "joint": 0 }, "pattern": "herringbone", "applicable": false },
+    { "paver": { "length": 9, "width": 6, "joint": 0 }, "pattern": "basketweave", "applicable": false },
+    { "paver": { "length": 12, "width": 12, "joint": 0 }, "pattern": "stack", "applicable": true },
+    { "paver": { "length": 9, "width": 6, "joint": 0 }, "pattern": "running", "applicable": true }
+  ]
+}

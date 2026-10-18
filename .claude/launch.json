@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "web-ts", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "web-ts", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173", "--strictPort"], "port": 4173 },
+    { "name": "blazor", "runtimeExecutable": "dotnet", "runtimeArgs": ["run", "--project", "blazor/src/FigueIt.Web", "-c", "Release", "--urls", "http://0.0.0.0:5174"], "port": 5174 }
+  ]
+}

@@ -1,0 +1,17 @@
+# Node / Vite
+node_modules/
+dist/
+*.local
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

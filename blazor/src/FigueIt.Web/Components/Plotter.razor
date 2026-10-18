@@ -1,0 +1,382 @@
+@using System.Globalization
+@using System.Text
+@using FigueIt.Engine
+@using FigueIt.Web.Models
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Draws the shape and the pavers as SVG. Engine coordinates have Y up, SVG has Y down, so every y is negated here. *@
+<div class="plotter">
+    <svg @ref="_svg" class="plot @(PolygonMode ? "editing" : null) @(Stale ? "stale" : null)"
+         viewBox="@_viewBox" style="aspect-ratio: @_aspect"
+         @onclick="OnSvgClick"
+         @onpointerdown="OnSvgPointerDown"
+         @onpointermove="OnPointerMove"
+         @onpointerup="OnPointerUp"
+         @onpointercancel="OnPointerUp">
+
+        @if (_fillPath is not null)
+        {
+            <path d="@_fillPath" fill="#f4efe6" />
+        }
+        <path d="@_gridPath" class="grid" />
+
+        @* One path per colour instead of thousands of elements keeps big layouts fast. *@
+        <path d="@_fullPath" class="paver" fill="#c8b8a0" />
+        <path d="@_cutPath" class="paver" fill="#e8a87c" />
+
+        @if (_outlinePath is not null)
+        {
+            <path d="@_outlinePath" class="outline @(Invalid ? "bad" : null)" />
+        }
+
+        @LabelMarkup
+
+        @if (PolygonMode)
+        {
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var index = i;
+                var closable = index == 0 && !Closed && Points.Count >= 3;
+                <g @key="index" class="handle @(closable ? "closable" : null)"
+                   @onpointerdown="e => OnHandleDown(index, e)"
+                   @onpointerdown:stopPropagation="true" @onpointerdown:preventDefault="true">
+                    <circle cx="@F(Points[index].X)" cy="@F(-Points[index].Y)" r="@_hitRadius" class="hit" />
+                    <circle cx="@F(Points[index].X)" cy="@F(-Points[index].Y)" r="@_dotRadius" class="dot" />
+                </g>
+            }
+        }
+    </svg>
+
+    <div class="legend">
+        <span><i class="swatch full"></i> Full paver</span>
+        <span><i class="swatch cut"></i> Cut paver</span>
+    </div>
+</div>
+
+@code {
+    /// <summary>The outline to draw: the last valid shape, or the raw points of a custom polygon.</summary>
+    [Parameter] public IReadOnlyList<Pt>? Outline { get; set; }
+
+    /// <summary>False while a custom polygon is still being drawn (the outline is then an open line).</summary>
+    [Parameter] public bool Closed { get; set; } = true;
+
+    /// <summary>The outline is self-intersecting; draw it in red and skip the fill.</summary>
+    [Parameter] public bool Invalid { get; set; }
+
+    /// <summary>The pavers to draw, or null for none.</summary>
+    [Parameter] public Layout? Layout { get; set; }
+
+    /// <summary>The numbers next to the drawing are out of date.</summary>
+    [Parameter] public bool Stale { get; set; }
+
+    [Parameter] public bool PolygonMode { get; set; }
+    [Parameter] public IReadOnlyList<Pt> Points { get; set; } = [];
+    [Parameter] public EventCallback<Pt> OnAddPoint { get; set; }
+    [Parameter] public EventCallback<PointMove> OnMovePoint { get; set; }
+    [Parameter] public EventCallback OnClosePolygon { get; set; }
+
+    private const double GridStep = 12;      // faint lines every foot
+    private const double SnapStep = 6;       // custom polygon points snap to 6 inches
+    private const double MinPolygonSpan = 240; // empty canvas for drawing: 20 ft x 15 ft
+    private const double MinPolygonHeight = 180;
+
+    private sealed record EdgeLabel(string X, string Y, string Text);
+
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+
+    // Razor treats a literal <text> tag as its own pseudo-element, so the SVG <text> labels are emitted from code.
+    private RenderFragment LabelMarkup => builder =>
+    {
+        foreach (var label in _labels)
+        {
+            // sequence numbers are positions in this code, so they stay the same on every loop pass
+            builder.OpenElement(0, "text");
+            builder.AddAttribute(1, "x", label.X);
+            builder.AddAttribute(2, "y", label.Y);
+            builder.AddAttribute(3, "font-size", _fontSize);
+            builder.AddAttribute(4, "class", "edge-label");
+            builder.AddContent(5, label.Text);
+            builder.CloseElement();
+        }
+    };
+
+    private ElementReference _svg;
+    private IJSInProcessObjectReference? _js;
+
+    private string _viewBox = "0 0 100 100";
+    private string _aspect = "1";
+    private string _fontSize = "1";
+    private string _dotRadius = "1";
+    private string _hitRadius = "2";
+    private string? _fillPath;
+    private string? _outlinePath;
+    private string _gridPath = "";
+    private string _fullPath = "";
+    private string _cutPath = "";
+    private List<EdgeLabel> _labels = [];
+    private Layout? _pathsBuiltFor;
+
+    // dragging state
+    private int _drag = -1;            // point being dragged, -1 when none
+    private int _clickIndex = -1;      // point the next click belongs to (a click always follows pointerup)
+    private bool _moved;
+    private (double MinX, double MinY, double W, double H)? _frozenView;
+    private bool _skipRender;
+
+    private double _fs; // font size / handle size in inches
+
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _js = (IJSInProcessObjectReference)await JS.InvokeAsync<IJSObjectReference>("import", "./js/plotter.js");
+        }
+        catch (Exception)
+        {
+            // without the module the drawing still shows; only clicking and dragging points is lost
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var ring = Outline ?? [];
+        BuildView(ring);
+        BuildOutline(ring);
+        BuildLabels(ring);
+        BuildGrid();
+
+        // The pavers are the expensive part: rebuild only when the layout object itself changed.
+        if (!ReferenceEquals(Layout, _pathsBuiltFor))
+        {
+            BuildPavers();
+            _pathsBuiltFor = Layout;
+        }
+    }
+
+    // ---------- drawing ----------
+
+    private static string F(double v) => v.ToString("0.##", Inv);
+
+    private void BuildView(IReadOnlyList<Pt> ring)
+    {
+        double minX = 0, minY = 0, maxX = MinPolygonSpan, maxY = MinPolygonHeight;
+        if (ring.Count > 0)
+        {
+            minX = ring.Min(p => p.X); maxX = ring.Max(p => p.X);
+            minY = ring.Min(p => p.Y); maxY = ring.Max(p => p.Y);
+            if (PolygonMode)
+            {
+                minX = Math.Min(minX, 0); minY = Math.Min(minY, 0);
+                maxX = Math.Max(maxX, MinPolygonSpan); maxY = Math.Max(maxY, MinPolygonHeight);
+            }
+        }
+
+        var span = Math.Max(Math.Max(maxX - minX, maxY - minY), 12);
+        _fs = span / 34;
+        var margin = _fs * 4.5;
+        var x = minX - margin;
+        var y = -maxY - margin; // flipped
+        var w = maxX - minX + 2 * margin;
+        var h = maxY - minY + 2 * margin;
+
+        // keep the drawing from becoming a thin sliver on very wide or very tall shapes
+        const double widest = 2.2, tallest = 0.55;
+        if (w / h > widest) { var nh = w / widest; y -= (nh - h) / 2; h = nh; }
+        else if (w / h < tallest) { var nw = h * tallest; x -= (nw - w) / 2; w = nw; }
+
+        // while a point is being dragged the view must not move under the pointer
+        if (_drag >= 0 && _frozenView is { } f) (x, y, w, h) = f;
+
+        _viewBox = $"{F(x)} {F(y)} {F(w)} {F(h)}";
+        _aspect = F(w / h);
+        _fontSize = F(_fs);
+        _dotRadius = F(_fs * 0.45);
+        _hitRadius = F(_fs * 1.4);
+        _currentView = (x, y, w, h);
+    }
+
+    private (double MinX, double MinY, double W, double H) _currentView;
+
+    private void BuildOutline(IReadOnlyList<Pt> ring)
+    {
+        _fillPath = null;
+        _outlinePath = null;
+        if (ring.Count < 2) return;
+        var path = new StringBuilder();
+        AppendRing(path, ring, close: Closed);
+        _outlinePath = path.ToString();
+        if (Closed && !Invalid && ring.Count >= 3) _fillPath = _outlinePath;
+    }
+
+    private void BuildLabels(IReadOnlyList<Pt> ring)
+    {
+        _labels = [];
+        if (ring.Count < 2) return;
+        // outward is to the right of each edge for a counter-clockwise ring
+        var outward = ring.Count >= 3 && Shapes.SignedArea(ring) < 0 ? -1 : 1;
+        var edges = Closed ? ring.Count : ring.Count - 1;
+        for (var i = 0; i < edges; i++)
+        {
+            var a = ring[i];
+            var b = ring[(i + 1) % ring.Count];
+            var dx = b.X - a.X;
+            var dy = b.Y - a.Y;
+            var length = Math.Sqrt(dx * dx + dy * dy);
+            if (length < _fs * 2.5) continue; // too short to label legibly
+            var distance = _fs * 1.3;
+            var mx = (a.X + b.X) / 2 + outward * dy / length * distance;
+            var my = (a.Y + b.Y) / 2 - outward * dx / length * distance;
+            _labels.Add(new EdgeLabel(F(mx), F(-my), Units.FormatLength(length)));
+        }
+    }
+
+    private void BuildGrid()
+    {
+        var (x, y, w, h) = _currentView;
+        var step = GridStep;
+        while (Math.Max(w, h) / step > 120) step *= 2; // very large shapes: fewer lines
+        var path = new StringBuilder();
+        for (var gx = Math.Ceiling(x / step) * step; gx <= x + w; gx += step)
+            path.Append('M').Append(F(gx)).Append(' ').Append(F(y)).Append('V').Append(F(y + h));
+        for (var gy = Math.Ceiling(y / step) * step; gy <= y + h; gy += step)
+            path.Append('M').Append(F(x)).Append(' ').Append(F(gy)).Append('H').Append(F(x + w));
+        _gridPath = path.ToString();
+    }
+
+    private void BuildPavers()
+    {
+        var full = new StringBuilder();
+        var cut = new StringBuilder();
+        if (Layout is not null)
+        {
+            foreach (var placement in Layout.Placements)
+            {
+                if (placement.Full)
+                {
+                    AppendRing(full, placement.Rect, close: true);
+                }
+                else
+                {
+                    foreach (var piece in placement.Clipped) AppendRing(cut, piece, close: true);
+                }
+            }
+        }
+        _fullPath = full.ToString();
+        _cutPath = cut.ToString();
+    }
+
+    private static void AppendRing(StringBuilder sb, IReadOnlyList<Pt> ring, bool close)
+    {
+        // engine rings are arrays; walking an array is much cheaper than the interface under WebAssembly
+        var points = ring as Pt[] ?? [.. ring];
+        for (var i = 0; i < points.Length; i++)
+        {
+            sb.Append(i == 0 ? 'M' : 'L');
+            AppendNumber(sb, points[i].X);
+            sb.Append(' ');
+            AppendNumber(sb, -points[i].Y);
+        }
+        if (close) sb.Append('Z');
+    }
+
+    // double.ToString("0.##") is very slow under WebAssembly and a big layout has tens of thousands of numbers,
+    // so the digits are written by hand: at most 2 decimals, no trailing zeros.
+    private static void AppendNumber(StringBuilder sb, double value)
+    {
+        var hundredths = (long)Math.Round(value * 100);
+        if (hundredths < 0) { sb.Append('-'); hundredths = -hundredths; }
+        var whole = hundredths / 100;
+        var frac = (int)(hundredths % 100);
+
+        Span<char> digits = stackalloc char[24];
+        var pos = digits.Length;
+        if (frac != 0)
+        {
+            if (frac % 10 != 0) digits[--pos] = (char)('0' + frac % 10);
+            digits[--pos] = (char)('0' + frac / 10);
+            digits[--pos] = '.';
+        }
+        do
+        {
+            digits[--pos] = (char)('0' + whole % 10);
+            whole /= 10;
+        } while (whole > 0);
+        sb.Append(digits[pos..]);
+    }
+
+    // ---------- clicking and dragging custom-polygon points ----------
+
+    /// <summary>Pointer position as a snapped point in shape space (inches, Y up), or null if it can't be mapped.</summary>
+    private Pt? ToShapePoint(double clientX, double clientY)
+    {
+        var xy = _js?.Invoke<double[]?>("toSvg", _svg, clientX, clientY);
+        if (xy is null) return null;
+        return new Pt(Snap(xy[0]), Snap(-xy[1]));
+    }
+
+    private static double Snap(double v) => Math.Round(v / SnapStep, MidpointRounding.AwayFromZero) * SnapStep + 0.0;
+
+    private void OnHandleDown(int index, PointerEventArgs e)
+    {
+        _drag = index;
+        _clickIndex = index;
+        _moved = false;
+        _frozenView = _currentView;
+        _js?.InvokeVoid("capture", _svg, e.PointerId);
+    }
+
+    private void OnSvgPointerDown(PointerEventArgs e) => _clickIndex = -1;
+
+    private void OnPointerMove(PointerEventArgs e)
+    {
+        if (_drag < 0 || _drag >= Points.Count || ToShapePoint(e.ClientX, e.ClientY) is not { } p || p == Points[_drag])
+        {
+            _skipRender = true; // idle mouse movement should not redraw anything
+            return;
+        }
+        _moved = true;
+        _ = OnMovePoint.InvokeAsync(new PointMove(_drag, p, Final: false));
+    }
+
+    private void OnPointerUp(PointerEventArgs e)
+    {
+        if (_drag < 0) { _skipRender = true; return; }
+        var index = _drag;
+        _drag = -1;
+        _frozenView = null;
+        _js?.InvokeVoid("release", _svg, e.PointerId);
+        if (_moved && index < Points.Count) _ = OnMovePoint.InvokeAsync(new PointMove(index, Points[index], Final: true));
+    }
+
+    private async Task OnSvgClick(MouseEventArgs e)
+    {
+        if (_clickIndex >= 0)
+        {
+            // this click ends a press on a point: a plain tap on the first point closes the shape
+            var index = _clickIndex;
+            _clickIndex = -1;
+            if (!_moved && index == 0 && !Closed && Points.Count >= 3) await OnClosePolygon.InvokeAsync();
+            return;
+        }
+
+        if (!PolygonMode || Closed || ToShapePoint(e.ClientX, e.ClientY) is not { } p) return;
+        await OnAddPoint.InvokeAsync(p);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_js is not null)
+        {
+            try { await _js.DisposeAsync(); } catch (JSDisconnectedException) { }
+        }
+    }
+}

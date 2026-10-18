@@ -1,0 +1,92 @@
+@using FigueIt.Web.Models
+@using FigueIt.Web.Services
+
+<section class="card">
+    <h2>Shape</h2>
+
+    <label class="field">
+        <span class="field-label">Type</span>
+        <select value="@State.Kind" @onchange="OnKindChanged">
+            <option value="@ShapeKind.Rectangle">Rectangle</option>
+            <option value="@ShapeKind.Triangle">Triangle</option>
+            <option value="@ShapeKind.LShape">L-shape</option>
+            <option value="@ShapeKind.Trapezoid">Trapezoid</option>
+            <option value="@ShapeKind.Polygon">Custom polygon</option>
+        </select>
+    </label>
+
+    <div class="field-grid">
+        @switch (State.Kind)
+        {
+            case ShapeKind.Rectangle:
+                <LengthField Label="Width" @bind-Value="State.RectW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.w")" />
+                <LengthField Label="Height" @bind-Value="State.RectH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.h")" />
+                break;
+            case ShapeKind.Triangle:
+                <LengthField Label="Side a" @bind-Value="State.TriA" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.a")" />
+                <LengthField Label="Side b" @bind-Value="State.TriB" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.b")" />
+                <LengthField Label="Side c" @bind-Value="State.TriC" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.c")" />
+                break;
+            case ShapeKind.LShape:
+                <LengthField Label="Width" @bind-Value="State.LW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.w")" />
+                <LengthField Label="Height" @bind-Value="State.LH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.h")" />
+                <LengthField Label="Notch width" @bind-Value="State.LNotchW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nw")" />
+                <LengthField Label="Notch height" @bind-Value="State.LNotchH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nh")" />
+                break;
+            case ShapeKind.Trapezoid:
+                <LengthField Label="Bottom" @bind-Value="State.TrapBottom" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.bottom")" />
+                <LengthField Label="Top" @bind-Value="State.TrapTop" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.top")" />
+                <LengthField Label="Height" @bind-Value="State.TrapH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.h")" />
+                break;
+        }
+    </div>
+
+    @if (State.Kind == ShapeKind.Polygon)
+    {
+        <div class="button-row">
+            <button type="button" disabled="@(State.Closed || State.Points.Count < 3)" @onclick="Close">Close shape</button>
+            <button type="button" disabled="@(State.Points.Count == 0)" @onclick="Clear">Clear points</button>
+        </div>
+        <p class="note">Click the drawing to add points (snapped to 6 in). Drag a point to move it. @State.Points.Count point@(State.Points.Count == 1 ? "" : "s")@(State.Closed ? ", closed" : "").</p>
+    }
+    else
+    {
+        <p class="note">Lengths are in feet unless you add a unit: 12, 12'6", 12-6, 3.5m.</p>
+    }
+
+    @if (Eval.Message is not null)
+    {
+        <p class="field-error shape-error">@Eval.Message</p>
+    }
+    else if (Eval.Hint is not null)
+    {
+        <p class="note">@Eval.Hint</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AppState State { get; set; } = null!;
+    [Parameter, EditorRequired] public Evaluation Eval { get; set; } = null!;
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    private Task Changed() => OnChange.InvokeAsync();
+
+    private Task OnKindChanged(ChangeEventArgs e)
+    {
+        State.Kind = Enum.Parse<ShapeKind>(e.Value!.ToString()!);
+        return Changed();
+    }
+
+    private Task Close()
+    {
+        State.Closed = true;
+        return Changed();
+    }
+
+    private Task Clear()
+    {
+        State.Points = [];
+        State.Closed = false;
+        return Changed();
+    }
+}

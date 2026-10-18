@@ -1,0 +1,92 @@
+@using FigueIt.Engine
+@using FigueIt.Web.Models
+@using FigueIt.Web.Services
+
+<section class="card results @(Stale || Busy ? "stale" : null)">
+    <h2>
+        Results
+        @if (Stale)
+        {
+            <span class="badge">out of date</span>
+        }
+        else if (Busy)
+        {
+            <span class="badge busy">updating</span>
+        }
+    </h2>
+
+    @if (Snapshot is null)
+    {
+        <p class="note">@(Eval.Message ?? Eval.Hint ?? "Fix the highlighted fields to see results.")</p>
+    }
+    else
+    {
+        if (Stale)
+        {
+            <p class="field-error">Fix the highlighted fields. These numbers are for the last valid inputs.</p>
+        }
+
+        var areaSqFt = Snapshot.AreaSqIn / 144;
+        <dl class="measure">
+            <div><dt>Area</dt><dd>@Format.Decimal2(areaSqFt) sq ft <span class="muted">(@Format.SqM(areaSqFt) sq m)</span></dd></div>
+            <div><dt>Perimeter</dt><dd>@Units.FormatLength(Snapshot.PerimeterIn)</dd></div>
+        </dl>
+
+        @if (Snapshot.TooLargeEstimate > 0)
+        {
+            <p class="field-error">
+                That is about @Format.Count(Snapshot.TooLargeEstimate) pavers, too many to lay out here.
+                Use a larger paver or a smaller shape.
+            </p>
+        }
+        else if (!Snapshot.HasLayout(State.Pattern))
+        {
+            <p class="note">Working out the layout...</p>
+        }
+        else if (!Snapshot.GetLayout(State.Pattern).Applicable)
+        {
+            <p class="warning">
+                @State.Pattern.Label() needs a paver twice as long as it is wide (2:1, 3:1 ...).
+                Pick another pattern or change the paver.
+            </p>
+        }
+        else
+        {
+            var sum = Calculator.SummaryFor(Snapshot, State.Pattern, State.WastePercent);
+            <div class="stats">
+                <div class="stat"><span class="stat-value">@Format.Count(sum.Full)</span><span class="stat-label">Full pavers</span></div>
+                <div class="stat"><span class="stat-value">@Format.Count(sum.Cut)</span><span class="stat-label">Cut pavers</span></div>
+                <div class="stat"><span class="stat-value">@Format.Count(sum.Total)</span><span class="stat-label">Total to lay</span></div>
+                <div class="stat order"><span class="stat-value">@Format.Count(sum.Order)</span><span class="stat-label">Order (@State.WastePercent% waste)</span></div>
+                <div class="stat"><span class="stat-value">@Format.Count(sum.Minimum)</span><span class="stat-label">Theoretical minimum</span></div>
+            </div>
+        }
+
+        @if (Snapshot.TooLargeEstimate == 0)
+        {
+            <CompareTable Rows="Calculator.Rows(Snapshot, State.WastePercent)" Current="State.Pattern" Pending="!Snapshot.AllLayoutsReady" OnSelect="OnSelectPattern" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AppState State { get; set; } = null!;
+    [Parameter, EditorRequired] public Evaluation Eval { get; set; } = null!;
+
+    /// <summary>Results for the last valid inputs, or null when there is nothing to show.</summary>
+    [Parameter] public Snapshot? Snapshot { get; set; }
+
+    /// <summary>True when the inputs are invalid right now and <see cref="Snapshot"/> is from earlier.</summary>
+    [Parameter] public bool Stale { get; set; }
+
+    /// <summary>The engine is still working on new inputs; the numbers shown are the previous ones.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    private Task OnSelectPattern(PatternId id)
+    {
+        State.Pattern = id;
+        return OnChange.InvokeAsync();
+    }
+}

@@ -1,0 +1,36 @@
+@using FigueIt.Engine
+@using FigueIt.Web.Services
+
+<h3>Compare patterns</h3>
+<table class="compare">
+    <thead>
+        <tr><th>Pattern</th><th>Full</th><th>Cut</th><th>Total</th><th>Order</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Rows)
+        {
+            var current = row.Id == Current;
+            <tr class="@(row.IsBest ? "best" : null) @(current ? "current" : null)" @onclick="() => OnSelect.InvokeAsync(row.Id)">
+                <td>
+                    @row.Id.Label()
+                    @if (current) { <span class="tag">current</span> }
+                    @if (row.IsBest) { <span class="tag best-tag">fewest</span> }
+                </td>
+                <td>@Format.Count(row.Summary.Full)</td>
+                <td>@Format.Count(row.Summary.Cut)</td>
+                <td>@Format.Count(row.Summary.Total)</td>
+                <td><strong>@Format.Count(row.Summary.Order)</strong></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<p class="note">@(Pending ? "Comparing patterns..." : "Click a row to use that pattern.")</p>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PatternRow> Rows { get; set; } = [];
+    [Parameter] public PatternId Current { get; set; }
+
+    /// <summary>Some patterns are still being computed, so rows may be missing.</summary>
+    [Parameter] public bool Pending { get; set; }
+    [Parameter] public EventCallback<PatternId> OnSelect { get; set; }
+}

@@ -1,0 +1,53 @@
+@using FigueIt.Web.Models
+@using FigueIt.Web.Services
+
+<section class="card">
+    <h2>Paver</h2>
+
+    <label class="field">
+        <span class="field-label">Preset</span>
+        <select value="@State.PaverPreset" @onchange="OnPresetChanged">
+            @foreach (var preset in PaverPresets.All)
+            {
+                <option value="@preset.Name">@preset.Name</option>
+            }
+            <option value="@PaverPresets.Custom">@PaverPresets.Custom</option>
+        </select>
+    </label>
+
+    <div class="field-grid">
+        <LengthField Label="Length" Value="@State.PaverLength" ValueChanged="v => SizeEdited(() => State.PaverLength = v)" Error="@Eval.ErrorFor("paver.length")" />
+        <LengthField Label="Width" Value="@State.PaverWidth" ValueChanged="v => SizeEdited(() => State.PaverWidth = v)" Error="@Eval.ErrorFor("paver.width")" />
+        <LengthField Label="Joint" @bind-Value="State.Joint" @bind-Value:after="Changed" Error="@Eval.ErrorFor("paver.joint")" />
+    </div>
+    <p class="note">Inches unless you add a unit: 8, 3/8, 20cm.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AppState State { get; set; } = null!;
+    [Parameter, EditorRequired] public Evaluation Eval { get; set; } = null!;
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    private Task Changed() => OnChange.InvokeAsync();
+
+    // Editing length or width by hand means the paver no longer matches a preset.
+    private Task SizeEdited(Action apply)
+    {
+        apply();
+        State.PaverPreset = PaverPresets.Custom;
+        return Changed();
+    }
+
+    private Task OnPresetChanged(ChangeEventArgs e)
+    {
+        var name = e.Value?.ToString() ?? PaverPresets.Custom;
+        State.PaverPreset = name;
+        var preset = PaverPresets.All.FirstOrDefault(p => p.Name == name);
+        if (preset is not null)
+        {
+            State.PaverLength = preset.Length;
+            State.PaverWidth = preset.Width;
+        }
+        return Changed();
+    }
+}

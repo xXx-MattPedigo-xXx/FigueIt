@@ -1,0 +1,22 @@
+@* A text box for a length such as 12, 12'6" or 3/8. Shows a red border and a one-line message when invalid. *@
+<label class="field">
+    <span class="field-label">@Label</span>
+    <input type="text" autocomplete="off" spellcheck="false"
+           class="@(Error is null ? null : "invalid")"
+           value="@Value" @oninput="OnInput" />
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <span class="field-error">@Error</span>
+    }
+</label>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Null when valid. An empty string marks the field invalid without a message.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    private Task OnInput(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

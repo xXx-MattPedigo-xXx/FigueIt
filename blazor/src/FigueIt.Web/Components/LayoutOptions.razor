@@ -1,0 +1,42 @@
+@using FigueIt.Web.Models
+@using FigueIt.Web.Services
+
+<section class="card">
+    <h2>Layout</h2>
+
+    <div class="field-grid">
+        <NumberField Label="Rotation (deg)" @bind-Value="State.Rotation" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rotation")" />
+        <div class="field">
+            <span class="field-label">Quick rotation</span>
+            <div class="button-row tight">
+                @foreach (var degrees in new[] { 0, 45, 90 })
+                {
+                    <button type="button" class="@(State.Rotation == degrees ? "active" : null)" @onclick="() => SetRotation(degrees)">@degrees</button>
+                }
+            </div>
+        </div>
+        <NumberField Label="Offset x (in)" @bind-Value="State.OffsetX" @bind-Value:after="Changed" Error="@Eval.ErrorFor("offsetX")" />
+        <NumberField Label="Offset y (in)" @bind-Value="State.OffsetY" @bind-Value:after="Changed" Error="@Eval.ErrorFor("offsetY")" />
+        <NumberField Label="Waste (%)" @bind-Value="State.WastePercent" @bind-Value:after="Changed" Error="@Eval.ErrorFor("waste")" />
+    </div>
+    <p class="note">Offset slides the pattern to change where the cuts land.</p>
+
+    <div class="button-row">
+        <button type="button" class="secondary" @onclick="OnReset">Reset</button>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AppState State { get; set; } = null!;
+    [Parameter, EditorRequired] public Evaluation Eval { get; set; } = null!;
+    [Parameter] public EventCallback OnChange { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    private Task Changed() => OnChange.InvokeAsync();
+
+    private Task SetRotation(double degrees)
+    {
+        State.Rotation = degrees;
+        return Changed();
+    }
+}

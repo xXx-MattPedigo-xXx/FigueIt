@@ -1,0 +1,197 @@
+﻿@using FigueIt.Engine
+@using FigueIt.Web.Components
+@using FigueIt.Web.Models
+@using FigueIt.Web.Services
+@inject LocalStore Store
+
+<PageTitle>FigueIt</PageTitle>
+
+<header class="app-header">
+    <h1>FigueIt</h1>
+    <span class="tagline">Paver and tile layout calculator</span>
+</header>
+
+@if (_state is null)
+{
+    <p class="loading-note">Loading...</p>
+}
+else
+{
+    <main class="layout">
+        <div class="plot-pane">
+            <Plotter Outline="Outline"
+                     Closed="@(_state.Kind != ShapeKind.Polygon || _state.Closed)"
+                     Invalid="PolygonInvalid"
+                     Layout="@(_dragging ? null : _snapshot?.LayoutIfReady(_state.Pattern))"
+                     Stale="Stale"
+                     PolygonMode="@(_state.Kind == ShapeKind.Polygon)"
+                     Points="_state.Points"
+                     OnAddPoint="AddPoint"
+                     OnMovePoint="MovePoint"
+                     OnClosePolygon="ClosePolygon" />
+        </div>
+
+        <div class="control-pane">
+            <ShapeEditor State="_state" Eval="_eval" OnChange="Changed" />
+            <PaverEditor State="_state" Eval="_eval" OnChange="Changed" />
+            <PatternPicker State="_state" Paver="@(_eval.Paver ?? _snapshot?.Paver)" OnChange="Changed" />
+            <LayoutOptions State="_state" Eval="_eval" OnChange="Changed" OnReset="Reset" />
+            <Results State="_state" Eval="_eval" Snapshot="_snapshot" Stale="Stale" Busy="_busy" OnChange="Changed" />
+        </div>
+    </main>
+}
+
+@code {
+    // Layouts slower than this (in ms) are computed after a short pause so fast typing stays responsive.
+    private const double SlowMs = 60;
+
+    private AppState? _state;
+    private Evaluation _eval = new();
+    private Snapshot? _snapshot;   // the results on screen (for the last valid inputs)
+    private bool _busy;            // new inputs are waiting for the engine; the screen still shows the previous results
+    private bool _dragging;        // a polygon point is being dragged: skip the expensive layout until it is dropped
+    private int _version;          // bumped on every edit so slow background work can tell it has been superseded
+    private double _lastLayoutMs;  // how long the last single-pattern layout took
+    private ShapeKind _lastKind = ShapeKind.Rectangle;
+
+    private bool IsPolygon => _state?.Kind == ShapeKind.Polygon;
+
+    // The numbers shown are older than the inputs (a field is invalid right now).
+    private bool Stale => _snapshot is not null && !_eval.Valid;
+
+    // The drawing outline: raw points for a custom polygon, otherwise the last valid shape.
+    private IReadOnlyList<Pt>? Outline => IsPolygon ? _state!.Points : _snapshot?.Shape;
+
+    private bool PolygonInvalid => IsPolygon && _state!.Closed && _eval.Message is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await Store.LoadAsync() ?? new AppState();
+        _lastKind = _state.Kind;
+        Recalculate();
+    }
+
+    // Every edit comes through here: re-check the inputs, rerun the engine only if they changed, save.
+    private void Changed()
+    {
+        // a different kind of shape starts fresh instead of showing the previous shape as "out of date"
+        if (_state!.Kind != _lastKind)
+        {
+            _snapshot = null;
+            _lastKind = _state.Kind;
+        }
+        Recalculate();
+        _ = Store.SaveAsync(_state);
+    }
+
+    private void Recalculate()
+    {
+        _eval = Calculator.Evaluate(_state!);
+        _version++;
+
+        if (_eval.Valid)
+        {
+            if (!_dragging) UpdateResults();
+        }
+        else
+        {
+            _busy = false;
+            if (IsPolygon) _snapshot = null; // no guessing for a polygon that is open, too small or crossing itself
+        }
+    }
+
+    // Show results for the current inputs. Small layouts are computed right away; big ones (thousands of
+    // pavers, a noticeable pause in WebAssembly) wait a moment so typing 28 does not compute 2 first.
+    private void UpdateResults()
+    {
+        var next = Calculator.CreateSnapshot(_eval, _state!, _snapshot);
+
+        if (next.TooLargeEstimate == 0 && !next.HasLayout(_state!.Pattern))
+        {
+            if (!ReferenceEquals(next, _snapshot) && _lastLayoutMs > SlowMs)
+            {
+                _busy = true;
+                _ = ShowAfterDelayAsync(next, _version);
+                return;
+            }
+            ComputeCurrentPattern(next);
+        }
+
+        _snapshot = next;
+        _busy = false;
+        ComputeOtherPatterns(next);
+    }
+
+    private void ComputeCurrentPattern(Snapshot snapshot)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        snapshot.GetLayout(_state!.Pattern);
+        _lastLayoutMs = watch.Elapsed.TotalMilliseconds;
+    }
+
+    private async Task ShowAfterDelayAsync(Snapshot next, int version)
+    {
+        await Task.Delay(150);
+        if (version != _version) return;
+        ComputeCurrentPattern(next);
+        _snapshot = next;
+        _busy = false;
+        StateHasChanged();
+        ComputeOtherPatterns(next);
+    }
+
+    // The compare table needs every pattern. Fast layouts finish immediately; slow ones fill in one pattern at a time.
+    private void ComputeOtherPatterns(Snapshot snapshot)
+    {
+        if (snapshot.AllLayoutsReady) return;
+        if (_lastLayoutMs <= SlowMs)
+        {
+            foreach (var id in Patterns.All) snapshot.GetLayout(id);
+            return;
+        }
+        _ = ComputeOthersInBackgroundAsync(snapshot, _version);
+    }
+
+    private async Task ComputeOthersInBackgroundAsync(Snapshot snapshot, int version)
+    {
+        foreach (var id in Patterns.All)
+        {
+            await Task.Delay(1); // let the browser paint between patterns
+            if (version != _version) return;
+            if (snapshot.HasLayout(id)) continue;
+            snapshot.GetLayout(id);
+            StateHasChanged();
+        }
+    }
+
+    private void Reset()
+    {
+        _state = new AppState();
+        _snapshot = null;
+        _lastKind = _state.Kind;
+        Recalculate();
+        _ = Store.SaveAsync(_state);
+    }
+
+    private void AddPoint(Pt p)
+    {
+        var points = _state!.Points;
+        if (_state.Closed || (points.Count > 0 && points[^1] == p)) return;
+        points.Add(p);
+        Changed();
+    }
+
+    private void MovePoint(PointMove move)
+    {
+        _state!.Points[move.Index] = move.Point;
+        _dragging = !move.Final;
+        Changed();
+    }
+
+    private void ClosePolygon()
+    {
+        if (_state!.Points.Count < 3) return;
+        _state.Closed = true;
+        Changed();
+    }
+}

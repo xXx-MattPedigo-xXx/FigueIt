@@ -12,7 +12,7 @@ internal sealed partial class AppStateJson : JsonSerializerContext;
 /// <summary>Saves and loads <see cref="AppState"/> in localStorage. Any failure (blocked storage, bad JSON) is swallowed.</summary>
 public sealed class LocalStore(IJSRuntime js)
 {
-    private const string Key = "figueit.v1";
+    private const string Key = "figueit.blazor.v1";
 
     public async Task<AppState?> LoadAsync()
     {

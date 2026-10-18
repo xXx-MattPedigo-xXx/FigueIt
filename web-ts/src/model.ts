@@ -72,7 +72,7 @@ export const DEFAULTS: AppState = {
 
 // ---------- persistence ----------
 
-const STORAGE_KEY = 'figueit.v1';
+const STORAGE_KEY = 'figueit.react.v1';
 
 function text(v: unknown, fallback: string): string {
   return typeof v === 'string' ? v : fallback;

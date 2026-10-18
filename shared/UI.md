@@ -13,7 +13,7 @@ The engine does all the math (see `SPEC.md`); the UI never re-implements geometr
 ## Defaults (first run)
 
 Rectangle 14' x 12'. Paver 8 x 4 in, joint 1/8 in. Pattern herringbone, rotation 0, offset 0,0, waste 10%.
-State is saved to `localStorage` (key `figueit.v1`) on every change and restored on load. A **Reset** button
+State is saved to `localStorage` (key `figueit.react.v1` or `figueit.blazor.v1`, distinct so both versions can share one website) on every change and restored on load. A **Reset** button
 restores the defaults.
 
 ## Controls

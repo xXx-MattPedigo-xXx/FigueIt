@@ -1,0 +1,77 @@
+# Production deploy: every push to main tests and builds both versions, then publishes them to GitHub Pages.
+# React is served at the site root, Blazor under /blazor/. A failing test stops the deploy.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      # React / TypeScript
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-ts/package-lock.json
+      - name: Test and build React version
+        working-directory: web-ts
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx vitest run
+          npm run build
+
+      # Blazor / C#
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test and publish Blazor version
+        working-directory: blazor
+        run: |
+          dotnet test -c Release
+          dotnet publish src/FigueIt.Web -c Release -o ../out/blazor
+
+      - name: Assemble site
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          mkdir -p site
+          cp -r web-ts/dist/. site/
+          cp -r out/blazor/wwwroot site/blazor
+          # Blazor resolves its files from <base href>, which must match where Pages serves it
+          sed -i "s|<base href=\"/\" />|<base href=\"${BASE_PATH}/blazor/\" />|" site/blazor/index.html
+          grep -q "<base href=\"${BASE_PATH}/blazor/\" />" site/blazor/index.html
+          # keep Jekyll from hiding Blazor's _framework folder
+          touch site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

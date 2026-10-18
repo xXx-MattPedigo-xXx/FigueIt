@@ -24,6 +24,7 @@ else
                      Invalid="PolygonInvalid"
                      Layout="@(_dragging ? null : _snapshot?.LayoutIfReady(_state.Pattern))"
                      Stale="Stale"
+                     Hint="@PlotHint"
                      PolygonMode="@(_state.Kind == ShapeKind.Polygon)"
                      Points="_state.Points"
                      OnAddPoint="AddPoint"
@@ -52,7 +53,7 @@ else
     private bool _dragging;        // a polygon point is being dragged: skip the expensive layout until it is dropped
     private int _version;          // bumped on every edit so slow background work can tell it has been superseded
     private double _lastLayoutMs;  // how long the last single-pattern layout took
-    private ShapeKind _lastKind = ShapeKind.Rectangle;
+    private ShapeKind _lastKind = ShapeKind.Polygon;
 
     private bool IsPolygon => _state?.Kind == ShapeKind.Polygon;
 
@@ -61,6 +62,13 @@ else
 
     // The drawing outline: raw points for a custom polygon, otherwise the last valid shape.
     private IReadOnlyList<Pt>? Outline => IsPolygon ? _state!.Points : _snapshot?.Shape;
+
+    // Prompt over the blank grid. A shape with a mistake in it is not "blank", so it gets none.
+    private string? PlotHint =>
+        _snapshot is not null ? null
+        : IsPolygon ? (_state!.Points.Count == 0 ? "Tap the grid to start your outline, or choose a shape type" : null)
+        : _eval.ShapeHasError ? null
+        : "Enter the dimensions to see the drawing";
 
     private bool PolygonInvalid => IsPolygon && _state!.Closed && _eval.Message is not null;
 
@@ -96,7 +104,9 @@ else
         else
         {
             _busy = false;
-            if (IsPolygon) _snapshot = null; // no guessing for a polygon that is open, too small or crossing itself
+            // No guessing for a polygon that is open, too small or crossing itself. Empty or unfinished shape
+            // fields are "no shape yet" (blank grid); only a field with a real mistake keeps the last valid shape.
+            if (IsPolygon || (_eval.Shape is null && !_eval.ShapeHasError)) _snapshot = null;
         }
     }
 

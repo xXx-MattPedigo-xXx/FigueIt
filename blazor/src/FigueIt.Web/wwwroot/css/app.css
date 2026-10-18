@@ -121,6 +121,7 @@ button.active { background: var(--ink); border-color: var(--ink); }
 /* ---------- plotter ---------- */
 
 .plotter {
+    position: relative;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -136,6 +137,20 @@ button.active { background: var(--ink); border-color: var(--ink); }
     -webkit-user-select: none;
 }
 .plot.stale { opacity: .55; }
+.plot-hint {
+    position: absolute;
+    top: 1.1rem;
+    left: 1.1rem;
+    right: 1.1rem;
+    margin: 0;
+    padding: .35rem .6rem;
+    text-align: center;
+    font-size: .9rem;
+    color: var(--ink);
+    background: rgba(255, 255, 255, .85);
+    border-radius: 6px;
+    pointer-events: none;
+}
 .plot.editing { cursor: crosshair; touch-action: none; }
 
 .plot .grid { fill: none; stroke: #000; stroke-opacity: .09; stroke-width: 1; vector-effect: non-scaling-stroke; }

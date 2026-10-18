@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PATTERNS, computeLayout, perimeter, signedArea, summarize } from './engine';
 import type { Pt } from './engine';
-import { DEFAULTS, loadState, saveState, toNumber, validatePaver, validateShape } from './model';
+import { DEFAULTS, hasShapeError, loadState, saveState, toNumber, validatePaver, validateShape } from './model';
 import type { AppState } from './model';
 import { useCompareCounts } from './useCompareCounts';
 import { useLastValid } from './useLastValid';
@@ -14,7 +14,9 @@ import { ShapeControls } from './ui/ShapeControls';
 
 export function App() {
   const [state, setState] = useState(loadState);
+  const [resets, setResets] = useState(0); // bumped by Reset so "last valid shape" is forgotten too
   useEffect(() => saveState(state), [state]);
+  const reset = useCallback(() => { setState(DEFAULTS); setResets((n) => n + 1); }, []);
 
   const change = useCallback((patch: Partial<AppState>) => setState((s) => ({ ...s, ...patch })), []);
   const addPoint = useCallback((p: Pt) => setState((s) => {
@@ -39,11 +41,13 @@ export function App() {
     [state.paverLength, state.paverWidth, state.joint],
   );
 
-  // While a field is invalid we keep showing the last valid shape/paver. A custom polygon has no "last valid".
-  const lastShape = useLastValid(shapeResult.shape);
-  const shape = state.shapeType === 'polygon' ? shapeResult.shape : lastShape;
+  // While a field holds a mistake we keep showing the last valid shape/paver. Empty fields are not mistakes:
+  // an unfinished shape is simply "no shape yet" (blank grid). A custom polygon has no "last valid" either.
+  const lastShape = useLastValid(shapeResult.shape, resets);
+  const shapeError = state.shapeType !== 'polygon' && hasShapeError(shapeResult);
+  const shape = shapeError ? lastShape : shapeResult.shape;
   const paver = useLastValid(paverResult.paver);
-  const stale = paverResult.paver === null || (state.shapeType !== 'polygon' && shapeResult.shape === null);
+  const stale = paverResult.paver === null || shapeError;
 
   const rotation = toNumber(state.rotation);
   const offset = useMemo<Pt>(() => [toNumber(state.offsetX), toNumber(state.offsetY)], [state.offsetX, state.offsetY]);
@@ -80,9 +84,9 @@ export function App() {
   const inapplicableNote = layout && !layout.applicable
     ? `${patternLabel} needs a paver whose length is a whole multiple of its width (such as 2:1). Pick another pattern or change the paver.`
     : null;
-  let emptyNote = 'Enter valid dimensions to see results.';
-  if (state.shapeType === 'polygon') {
-    emptyNote = shapeResult.groupError ?? 'Add at least 3 points and close the shape to see results.';
+  let emptyNote = 'Draw or enter a shape to see results';
+  if (hasShapeError(shapeResult)) {
+    emptyNote = shapeResult.groupError ?? 'Enter valid dimensions to see results.';
   }
 
   return (
@@ -90,7 +94,7 @@ export function App() {
       <header className="app-header">
         <h1>FigueIt</h1>
         <span className="tagline">Paver layout calculator</span>
-        <button type="button" onClick={() => setState(DEFAULTS)}>Reset</button>
+        <button type="button" onClick={reset}>Reset</button>
       </header>
 
       <main className="panes">

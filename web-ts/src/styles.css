@@ -107,7 +107,7 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); tex
 
 /* ---------- plotter ---------- */
 
-.plotter { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.plotter { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
 .plotter svg { display: block; width: 100%; height: auto; max-height: 75vh; user-select: none; }
 .plotter svg.adding { cursor: crosshair; }
 .plotter .grid { stroke: #e9e2d6; stroke-width: 1; vector-effect: non-scaling-stroke; fill: none; }
@@ -123,6 +123,7 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); tex
 .plotter .handle .dot { fill: #fff; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .plotter .handle.first .dot { fill: var(--accent); }
 
+.plot-hint { position: absolute; top: 22px; left: 22px; right: 22px; margin: 0; padding: 6px 10px; text-align: center; font-size: 0.9rem; color: var(--ink); background: rgba(255, 255, 255, 0.85); border-radius: 6px; pointer-events: none; }
 .plotter-note { margin: 6px 0 0; font-size: 0.85rem; color: var(--muted); }
 .plotter-note.stale { color: #8a5b00; background: var(--warn-bg); padding: 4px 8px; border-radius: 6px; }
 

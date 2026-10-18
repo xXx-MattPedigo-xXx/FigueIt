@@ -14,15 +14,28 @@ export const SHAPE_TYPES: { id: ShapeType; label: string }[] = [
 
 export type DimShapeType = Exclude<ShapeType, 'polygon'>;
 
-/** The text fields each shape type shows. Keys index into AppState.dims. */
-export const SHAPE_FIELDS: Record<DimShapeType, { key: string; label: string }[]> = {
-  rectangle: [{ key: 'w', label: 'Width' }, { key: 'h', label: 'Height' }],
-  triangle: [{ key: 'a', label: 'Side a' }, { key: 'b', label: 'Side b' }, { key: 'c', label: 'Side c' }],
-  lshape: [
-    { key: 'w', label: 'Width' }, { key: 'h', label: 'Height' },
-    { key: 'nw', label: 'Notch width' }, { key: 'nh', label: 'Notch height' },
+/** The text fields each shape type shows. Keys index into AppState.dims. The placeholder is an example value. */
+export const SHAPE_FIELDS: Record<DimShapeType, { key: string; label: string; placeholder: string }[]> = {
+  rectangle: [
+    { key: 'w', label: 'Width', placeholder: "14'" },
+    { key: 'h', label: 'Height', placeholder: "12'" },
   ],
-  trapezoid: [{ key: 'b1', label: 'Bottom' }, { key: 'b2', label: 'Top' }, { key: 'h', label: 'Height' }],
+  triangle: [
+    { key: 'a', label: 'Side a', placeholder: "12'" },
+    { key: 'b', label: 'Side b', placeholder: "10'" },
+    { key: 'c', label: 'Side c', placeholder: "14'" },
+  ],
+  lshape: [
+    { key: 'w', label: 'Width', placeholder: "14'" },
+    { key: 'h', label: 'Height', placeholder: "12'" },
+    { key: 'nw', label: 'Notch width', placeholder: "6'" },
+    { key: 'nh', label: 'Notch height', placeholder: "5'" },
+  ],
+  trapezoid: [
+    { key: 'b1', label: 'Bottom', placeholder: "16'" },
+    { key: 'b2', label: 'Top', placeholder: "10'" },
+    { key: 'h', label: 'Height', placeholder: "10'" },
+  ],
 };
 
 export const PAVER_PRESETS: { id: string; label: string; length: string; width: string }[] = [
@@ -54,9 +67,10 @@ export interface AppState {
   waste: string;
 }
 
+/** First run and after Reset: a blank grid (custom polygon, no points) with every shape field empty. */
 export const DEFAULTS: AppState = {
-  shapeType: 'rectangle',
-  dims: { w: '14', h: '12', a: '12', b: '10', c: '10', nw: '5', nh: '4', b1: '14', b2: '8' },
+  shapeType: 'polygon',
+  dims: { w: '', h: '', a: '', b: '', c: '', nw: '', nh: '', b1: '', b2: '' },
   points: [],
   closed: false,
   paverLength: '8',
@@ -137,6 +151,11 @@ export interface ShapeResult {
   groupError: string | null;
 }
 
+/** True when the shape inputs hold a real mistake (as opposed to just being empty or incomplete). */
+export function hasShapeError(r: ShapeResult): boolean {
+  return r.groupError !== null || Object.keys(r.fieldErrors).length > 0;
+}
+
 const BAD_LENGTH = `Enter a length like 12, 12'6" or 12-6`;
 
 function toShapeSpec(state: AppState, type: DimShapeType): ShapeSpec {
@@ -199,12 +218,15 @@ export function validateShape(state: AppState): ShapeResult {
 
   const type = state.shapeType;
   const fieldErrors: Record<string, string> = {};
+  let incomplete = false;
   for (const field of SHAPE_FIELDS[type]) {
-    const inches = parseLength(state.dims[field.key], 'ft');
+    const value = state.dims[field.key] ?? '';
+    if (value.trim() === '') { incomplete = true; continue; } // empty means "not entered yet", not an error
+    const inches = parseLength(value, 'ft');
     if (inches === null) fieldErrors[field.key] = BAD_LENGTH;
     else if (inches <= 0) fieldErrors[field.key] = 'Must be more than zero';
   }
-  if (Object.keys(fieldErrors).length > 0) return { shape: null, fieldErrors, groupError: null };
+  if (Object.keys(fieldErrors).length > 0 || incomplete) return { shape: null, fieldErrors, groupError: null };
 
   const shape = buildShape(toShapeSpec(state, type));
   return { shape, fieldErrors, groupError: shape ? null : GROUP_ERRORS[type] };

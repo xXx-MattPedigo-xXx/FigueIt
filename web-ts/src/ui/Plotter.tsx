@@ -7,7 +7,7 @@ import type { Layout, Pt } from '../engine';
 // so every point is drawn at (x, -y). The viewBox is in inches too, so one SVG unit = one inch.
 
 const SNAP = 6; // inches, for custom polygon points
-const DEFAULT_CANVAS: Pt[] = [[0, 0], [288, 216]]; // 24 x 18 ft of empty space while drawing a polygon
+const DEFAULT_CANVAS: Pt[] = [[0, 0], [240, 240]]; // the blank 20 x 20 ft grid shown when there is no shape yet
 
 interface PlotterProps {
   /** The closed outline to draw, or null when there is none yet. */
@@ -30,6 +30,12 @@ export function Plotter(props: PlotterProps) {
     const pts = [...(shape ?? []), ...(editable ? points : [])];
     return fitView(pts.length === 0 || editable ? [...pts, ...DEFAULT_CANVAS] : pts);
   }, [shape, editable, points]);
+
+  let hint: string | null = null;
+  if (!shape) {
+    if (!editable) hint = 'Enter the dimensions to see the drawing';
+    else if (points.length === 0) hint = 'Tap the grid to start your outline, or choose a shape type';
+  }
 
   const grid = useMemo(() => gridPath(view), [view]);
   const fontSize = view.size * 0.03;
@@ -94,7 +100,7 @@ export function Plotter(props: PlotterProps) {
             </g>
           ))}
       </svg>
-      {!shape && !editable && <p className="plotter-note">Enter valid dimensions to see the drawing.</p>}
+      {hint && <p className="plot-hint">{hint}</p>}
       {stale && <p className="plotter-note stale">Showing the last valid inputs. Fix the highlighted fields to update.</p>}
       <ul className="legend">
         <li><span className="swatch full" /> Full paver</li>

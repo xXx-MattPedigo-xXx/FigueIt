@@ -48,6 +48,11 @@
         }
     </svg>
 
+    @if (Hint is not null)
+    {
+        <p class="plot-hint">@Hint</p>
+    }
+
     <div class="legend">
         <span><i class="swatch full"></i> Full paver</span>
         <span><i class="swatch cut"></i> Cut paver</span>
@@ -70,6 +75,9 @@
     /// <summary>The numbers next to the drawing are out of date.</summary>
     [Parameter] public bool Stale { get; set; }
 
+    /// <summary>A short prompt shown over the grid while there is nothing drawn yet.</summary>
+    [Parameter] public string? Hint { get; set; }
+
     [Parameter] public bool PolygonMode { get; set; }
     [Parameter] public IReadOnlyList<Pt> Points { get; set; } = [];
     [Parameter] public EventCallback<Pt> OnAddPoint { get; set; }
@@ -78,8 +86,8 @@
 
     private const double GridStep = 12;      // faint lines every foot
     private const double SnapStep = 6;       // custom polygon points snap to 6 inches
-    private const double MinPolygonSpan = 240; // empty canvas for drawing: 20 ft x 15 ft
-    private const double MinPolygonHeight = 180;
+    private const double MinPolygonSpan = 240; // empty canvas for drawing: 20 ft x 20 ft
+    private const double MinPolygonHeight = 240;
 
     private sealed record EdgeLabel(string X, string Y, string Text);
 

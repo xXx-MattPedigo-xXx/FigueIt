@@ -10,21 +10,21 @@ public enum ShapeKind { Rectangle, Triangle, LShape, Trapezoid, Polygon }
 /// </summary>
 public sealed class AppState
 {
-    public ShapeKind Kind { get; set; } = ShapeKind.Rectangle;
+    public ShapeKind Kind { get; set; } = ShapeKind.Polygon;
 
-    // shape fields (feet by default)
-    public string RectW { get; set; } = "14";
-    public string RectH { get; set; } = "12";
-    public string TriA { get; set; } = "12";
-    public string TriB { get; set; } = "10";
-    public string TriC { get; set; } = "14";
-    public string LW { get; set; } = "14";
-    public string LH { get; set; } = "12";
-    public string LNotchW { get; set; } = "6";
-    public string LNotchH { get; set; } = "5";
-    public string TrapBottom { get; set; } = "16";
-    public string TrapTop { get; set; } = "10";
-    public string TrapH { get; set; } = "10";
+    // shape fields (feet by default); empty means "not entered yet"
+    public string RectW { get; set; } = "";
+    public string RectH { get; set; } = "";
+    public string TriA { get; set; } = "";
+    public string TriB { get; set; } = "";
+    public string TriC { get; set; } = "";
+    public string LW { get; set; } = "";
+    public string LH { get; set; } = "";
+    public string LNotchW { get; set; } = "";
+    public string LNotchH { get; set; } = "";
+    public string TrapBottom { get; set; } = "";
+    public string TrapTop { get; set; } = "";
+    public string TrapH { get; set; } = "";
 
     // custom polygon, in inches
     public List<Pt> Points { get; set; } = [];

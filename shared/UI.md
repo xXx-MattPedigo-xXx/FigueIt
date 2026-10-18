@@ -10,11 +10,22 @@ The engine does all the math (see `SPEC.md`); the UI never re-implements geometr
 - Two panes. Left: the **plotter** (an SVG drawing of the shape and the paver layout). Right: controls, then results.
 - Under ~800 px wide the panes stack, plotter on top. It must be usable on a phone.
 
-## Defaults (first run)
+## Defaults (first run, and after Reset)
 
-Rectangle 14' x 12'. Paver 8 x 4 in, joint 1/8 in. Pattern herringbone, rotation 0, offset 0,0, waste 10%.
-State is saved to `localStorage` (key `figueit.react.v1` or `figueit.blazor.v1`, distinct so both versions can share one website) on every change and restored on load. A **Reset** button
-restores the defaults.
+The app starts on a **blank grid**: no shape is drawn.
+
+- Shape type is **Custom polygon** with no points. The plotter shows an empty 20' x 20' grid (1 ft lines) that
+  the user can tap straight away, with a hint over it: "Tap the grid to start your outline, or choose a shape type".
+- Every shape dimension field (all types) starts **empty**, with an example as placeholder text (for example `14'`).
+  An empty field means "not entered yet": no red border and no error message. Only text the user typed that
+  does not parse, or dimensions that are impossible, are errors.
+- With no shape yet, Results show "Draw or enter a shape to see results" instead of numbers, and the
+  Compare patterns table is hidden. The plotter shows the blank grid (not a "last valid shape", since there is none).
+- Unchanged: paver 8 x 4 in, joint 1/8 in, pattern herringbone, rotation 0, offset 0,0, waste 10%.
+
+State is saved to `localStorage` (key `figueit.react.v1` or `figueit.blazor.v1`, distinct so both versions can
+share one website) on every change and restored on load, so a returning user sees their own last patio. A
+**Reset** button returns to the blank grid above.
 
 ## Controls
 

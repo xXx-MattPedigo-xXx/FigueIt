@@ -9,10 +9,12 @@ interface FieldProps {
   /** Red border without a message (the message is shown elsewhere). */
   invalid?: boolean;
   error?: string;
+  /** Example value shown while the field is empty. */
+  placeholder?: string;
 }
 
 /** A labelled input with an optional red border and one-line error message. */
-export function Field({ label, value, onChange, kind = 'text', invalid, error }: FieldProps) {
+export function Field({ label, value, onChange, kind = 'text', invalid, error, placeholder }: FieldProps) {
   const id = useId();
   const bad = invalid || !!error;
   return (
@@ -28,6 +30,7 @@ export function Field({ label, value, onChange, kind = 'text', invalid, error }:
         className={bad ? 'invalid' : undefined}
         aria-invalid={bad}
         value={value}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
       {error && <small className="error">{error}</small>}

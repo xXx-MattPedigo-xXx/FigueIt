@@ -35,6 +35,7 @@ export function ShapeControls({ state, result, onChange }: Props) {
               <Field
                 key={`${shapeType}-${f.key}`}
                 label={f.label}
+                placeholder={f.placeholder}
                 value={state.dims[f.key]}
                 error={result.fieldErrors[f.key]}
                 invalid={!!result.groupError}

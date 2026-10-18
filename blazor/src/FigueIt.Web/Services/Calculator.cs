@@ -16,6 +16,12 @@ public sealed class Evaluation
     /// <summary>Neutral guidance (not an error), such as "add at least 3 points".</summary>
     public string? Hint { get; set; }
 
+    /// <summary>Some shape field is still empty, so there is no shape yet. That is not an error.</summary>
+    public bool Incomplete { get; set; }
+
+    /// <summary>A shape field holds a mistake (as opposed to just being empty).</summary>
+    public bool ShapeHasError { get; set; }
+
     public IReadOnlyList<Pt>? Shape { get; set; }
     public Paver? Paver { get; set; }
 
@@ -82,8 +88,9 @@ public static class Calculator
         return ev;
     }
 
-    private static double? Parse(Evaluation ev, string key, string text, Unit unit, bool allowZero = false)
+    private static double? Parse(Evaluation ev, string key, string text, Unit unit, bool allowZero = false, bool emptyOk = false)
     {
+        if (emptyOk && string.IsNullOrWhiteSpace(text)) { ev.Incomplete = true; return null; }
         var v = Units.ParseLength(text, unit);
         if (v is null) { ev.Errors[key] = "not a valid length"; return null; }
         if (v == 0 && !allowZero) { ev.Errors[key] = "must be more than zero"; return null; }
@@ -106,16 +113,16 @@ public static class Calculator
         switch (s.Kind)
         {
             case ShapeKind.Rectangle:
-                Parse(ev, "rect.w", s.RectW, Unit.Ft);
-                Parse(ev, "rect.h", s.RectH, Unit.Ft);
-                if (ev.Errors.Count == errorsBefore) spec = new RectangleSpec(s.RectW, s.RectH);
+                Parse(ev, "rect.w", s.RectW, Unit.Ft, emptyOk: true);
+                Parse(ev, "rect.h", s.RectH, Unit.Ft, emptyOk: true);
+                if (ev.Errors.Count == errorsBefore && !ev.Incomplete) spec = new RectangleSpec(s.RectW, s.RectH);
                 break;
 
             case ShapeKind.Triangle:
             {
-                var a = Parse(ev, "tri.a", s.TriA, Unit.Ft);
-                var b = Parse(ev, "tri.b", s.TriB, Unit.Ft);
-                var c = Parse(ev, "tri.c", s.TriC, Unit.Ft);
+                var a = Parse(ev, "tri.a", s.TriA, Unit.Ft, emptyOk: true);
+                var b = Parse(ev, "tri.b", s.TriB, Unit.Ft, emptyOk: true);
+                var c = Parse(ev, "tri.c", s.TriC, Unit.Ft, emptyOk: true);
                 if (a is not { } x || b is not { } y || c is not { } z) break;
                 if (x + y <= z || x + z <= y || y + z <= x)
                 {
@@ -128,21 +135,21 @@ public static class Calculator
 
             case ShapeKind.LShape:
             {
-                var w = Parse(ev, "l.w", s.LW, Unit.Ft);
-                var h = Parse(ev, "l.h", s.LH, Unit.Ft);
-                var nw = Parse(ev, "l.nw", s.LNotchW, Unit.Ft);
-                var nh = Parse(ev, "l.nh", s.LNotchH, Unit.Ft);
+                var w = Parse(ev, "l.w", s.LW, Unit.Ft, emptyOk: true);
+                var h = Parse(ev, "l.h", s.LH, Unit.Ft, emptyOk: true);
+                var nw = Parse(ev, "l.nw", s.LNotchW, Unit.Ft, emptyOk: true);
+                var nh = Parse(ev, "l.nh", s.LNotchH, Unit.Ft, emptyOk: true);
                 if (w is { } W && nw is { } NW && NW >= W) ev.Errors["l.nw"] = "must be narrower than the width";
                 if (h is { } H && nh is { } NH && NH >= H) ev.Errors["l.nh"] = "must be shorter than the height";
-                if (ev.Errors.Count == errorsBefore) spec = new LShapeSpec(s.LW, s.LH, s.LNotchW, s.LNotchH);
+                if (ev.Errors.Count == errorsBefore && !ev.Incomplete) spec = new LShapeSpec(s.LW, s.LH, s.LNotchW, s.LNotchH);
                 break;
             }
 
             case ShapeKind.Trapezoid:
-                Parse(ev, "trap.bottom", s.TrapBottom, Unit.Ft);
-                Parse(ev, "trap.top", s.TrapTop, Unit.Ft);
-                Parse(ev, "trap.h", s.TrapH, Unit.Ft);
-                if (ev.Errors.Count == errorsBefore) spec = new TrapezoidSpec(s.TrapBottom, s.TrapTop, s.TrapH);
+                Parse(ev, "trap.bottom", s.TrapBottom, Unit.Ft, emptyOk: true);
+                Parse(ev, "trap.top", s.TrapTop, Unit.Ft, emptyOk: true);
+                Parse(ev, "trap.h", s.TrapH, Unit.Ft, emptyOk: true);
+                if (ev.Errors.Count == errorsBefore && !ev.Incomplete) spec = new TrapezoidSpec(s.TrapBottom, s.TrapTop, s.TrapH);
                 break;
 
             case ShapeKind.Polygon:
@@ -157,9 +164,13 @@ public static class Calculator
                 break;
         }
 
-        if (spec is null) return;
-        ev.Shape = Shapes.BuildShape(spec);
-        if (ev.Shape is null) ev.Message = "that shape has no area";
+        if (spec is not null)
+        {
+            ev.Shape = Shapes.BuildShape(spec);
+            if (ev.Shape is null) ev.Message = "that shape has no area";
+        }
+
+        ev.ShapeHasError = ev.Message is not null || ev.Errors.Count > errorsBefore;
     }
 
     /// <summary>

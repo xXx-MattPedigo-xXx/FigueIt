@@ -17,7 +17,7 @@
 
     @if (Snapshot is null)
     {
-        <p class="note">@(Eval.Message ?? Eval.Hint ?? "Fix the highlighted fields to see results.")</p>
+        <p class="note">@(Eval.Message ?? (Eval.Errors.Count > 0 ? "Fix the highlighted fields to see results." : "Draw or enter a shape to see results"))</p>
     }
     else
     {

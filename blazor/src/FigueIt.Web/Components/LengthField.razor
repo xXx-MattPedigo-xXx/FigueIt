@@ -3,7 +3,7 @@
     <span class="field-label">@Label</span>
     <input type="text" autocomplete="off" spellcheck="false"
            class="@(Error is null ? null : "invalid")"
-           value="@Value" @oninput="OnInput" />
+           value="@Value" placeholder="@Placeholder" @oninput="OnInput" />
     @if (!string.IsNullOrEmpty(Error))
     {
         <span class="field-error">@Error</span>
@@ -14,6 +14,9 @@
     [Parameter, EditorRequired] public string Label { get; set; } = "";
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>An example shown while the field is empty.</summary>
+    [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Null when valid. An empty string marks the field invalid without a message.</summary>
     [Parameter] public string? Error { get; set; }

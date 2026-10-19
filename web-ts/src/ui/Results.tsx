@@ -16,12 +16,12 @@ interface ResultsProps {
   summary: Summary | null;
   areaSqIn: number;
   stale: boolean;
-  /** Set when the selected pattern cannot be laid with this paver. */
-  inapplicableNote: string | null;
+  /** Set while the drawn pattern is a fallback for the chosen one (the paver doesn't suit it). */
+  patternNote: string | null;
   emptyNote: string;
 }
 
-export function Results({ summary, areaSqIn, stale, inapplicableNote, emptyNote }: ResultsProps) {
+export function Results({ summary, areaSqIn, stale, patternNote, emptyNote }: ResultsProps) {
   return (
     <section className={`card results${stale ? ' stale' : ''}`} aria-live="polite">
       <h2>Results</h2>
@@ -30,7 +30,7 @@ export function Results({ summary, areaSqIn, stale, inapplicableNote, emptyNote 
         <p className="muted">{emptyNote}</p>
       ) : (
         <>
-          {inapplicableNote && <p className="warning">{inapplicableNote}</p>}
+          {patternNote && <p className="warning">{patternNote}</p>}
           <dl className="stats">
             <Stat label="Area" value={`${formatSqFt(areaSqIn)} sq ft`} sub={`${formatSqM(areaSqIn)} sq m`} />
             <Stat label="Perimeter" value={formatLength(summary.perimeterIn)} />
@@ -58,6 +58,7 @@ function Stat({ label, value, sub, big }: { label: string; value: string; sub?: 
 
 interface CompareProps {
   rows: CompareRow[];
+  /** The pattern being drawn (not necessarily the chosen one). */
   current: PatternId;
   /** The compare rows are being recomputed in the background. */
   updating: boolean;

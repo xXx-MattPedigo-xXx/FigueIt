@@ -138,6 +138,7 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent); tex
 .results.stale .stats { opacity: 0.45; }
 .badge { background: var(--warn-bg); color: #8a5b00; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; margin: 0 0 8px; }
 .warning { background: var(--warn-bg); border-left: 4px solid #e0a100; padding: 8px 10px; border-radius: 4px; margin: 0 0 8px; }
+.pattern-note { margin-top: 8px; font-size: 0.85rem; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 0; }
 .stat dt { font-size: 0.78rem; color: var(--muted); }

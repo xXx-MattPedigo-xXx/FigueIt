@@ -22,7 +22,7 @@ else
             <Plotter Outline="Outline"
                      Closed="@(_state.Kind != ShapeKind.Polygon || _state.Closed)"
                      Invalid="PolygonInvalid"
-                     Layout="@(_dragging ? null : _snapshot?.LayoutIfReady(_state.Pattern))"
+                     Layout="@(_dragging || _snapshot is null ? null : _snapshot.LayoutIfReady(_snapshot.Drawn(_state.Pattern)))"
                      Stale="Stale"
                      Hint="@PlotHint"
                      PolygonMode="@(_state.Kind == ShapeKind.Polygon)"
@@ -116,7 +116,7 @@ else
     {
         var next = Calculator.CreateSnapshot(_eval, _state!, _snapshot);
 
-        if (next.TooLargeEstimate == 0 && !next.HasLayout(_state!.Pattern))
+        if (next.TooLargeEstimate == 0 && !next.HasLayout(next.Drawn(_state!.Pattern)))
         {
             if (!ReferenceEquals(next, _snapshot) && _lastLayoutMs > SlowMs)
             {
@@ -135,7 +135,7 @@ else
     private void ComputeCurrentPattern(Snapshot snapshot)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        snapshot.GetLayout(_state!.Pattern);
+        snapshot.GetLayout(snapshot.Drawn(_state!.Pattern));
         _lastLayoutMs = watch.Elapsed.TotalMilliseconds;
     }
 
@@ -148,6 +148,7 @@ else
         _busy = false;
         StateHasChanged();
         ComputeOtherPatterns(next);
+        StateHasChanged(); // the fast path computes the other patterns right here, so the compare table needs a repaint
     }
 
     // The compare table needs every pattern. Fast layouts finish immediately; slow ones fill in one pattern at a time.

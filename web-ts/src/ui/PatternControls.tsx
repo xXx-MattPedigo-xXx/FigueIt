@@ -1,5 +1,5 @@
 import { PATTERNS, isApplicable } from '../engine';
-import type { Paver } from '../engine';
+import type { Paver, PatternId } from '../engine';
 import type { AppState } from '../model';
 import { Field } from './Field';
 
@@ -7,10 +7,14 @@ interface Props {
   state: AppState;
   /** The last valid paver, used to decide which patterns are available. */
   paver: Paver | null;
+  /** The pattern being drawn, which is the selected one (it differs from state.pattern during a fallback). */
+  drawn: PatternId;
+  /** Explains why the drawn pattern differs from the chosen one, or null. */
+  note: string | null;
   onChange: (patch: Partial<AppState>) => void;
 }
 
-export function PatternControls({ state, paver, onChange }: Props) {
+export function PatternControls({ state, paver, drawn, note, onChange }: Props) {
   return (
     <fieldset className="card">
       <legend>Pattern</legend>
@@ -19,13 +23,16 @@ export function PatternControls({ state, paver, onChange }: Props) {
           const ok = !paver || isApplicable(p.id, paver);
           return (
             <label key={p.id} className={ok ? 'radio' : 'radio disabled'}>
+              {/* onClick, not onChange: during a fallback the drawn pattern is already checked, and clicking it
+                  must still make it the chosen one (a change event doesn't fire for an already-checked radio). */}
               <input
                 type="radio"
                 name="pattern"
                 value={p.id}
-                checked={state.pattern === p.id}
+                checked={drawn === p.id}
                 disabled={!ok}
-                onChange={() => onChange({ pattern: p.id })}
+                onChange={() => {}}
+                onClick={() => onChange({ pattern: p.id })}
               />
               <span>{p.label}</span>
               {!ok && <small className="muted">needs a 2:1 paver</small>}
@@ -33,6 +40,7 @@ export function PatternControls({ state, paver, onChange }: Props) {
           );
         })}
       </div>
+      {note && <p className="warning pattern-note">{note}</p>}
 
       <div className="row">
         <Field label="Rotation (degrees)" kind="number" value={state.rotation}

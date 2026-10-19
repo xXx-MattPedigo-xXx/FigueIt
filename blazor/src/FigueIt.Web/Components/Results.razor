@@ -26,6 +26,7 @@
             <p class="field-error">Fix the highlighted fields. These numbers are for the last valid inputs.</p>
         }
 
+        var drawn = Snapshot.Drawn(State.Pattern); // what is laid out; State.Pattern is only what the user chose
         var areaSqFt = Snapshot.AreaSqIn / 144;
         <dl class="measure">
             <div><dt>Area</dt><dd>@Format.Decimal2(areaSqFt) sq ft <span class="muted">(@Format.SqM(areaSqFt) sq m)</span></dd></div>
@@ -39,20 +40,17 @@
                 Use a larger paver or a smaller shape.
             </p>
         }
-        else if (!Snapshot.HasLayout(State.Pattern))
+        else if (!Snapshot.HasLayout(drawn))
         {
             <p class="note">Working out the layout...</p>
         }
-        else if (!Snapshot.GetLayout(State.Pattern).Applicable)
-        {
-            <p class="warning">
-                @State.Pattern.Label() needs a paver twice as long as it is wide (2:1, 3:1 ...).
-                Pick another pattern or change the paver.
-            </p>
-        }
         else
         {
-            var sum = Calculator.SummaryFor(Snapshot, State.Pattern, State.WastePercent);
+            if (Calculator.FallbackNote(State.Pattern, drawn) is { } note)
+            {
+                <p class="warning">@note</p>
+            }
+            var sum = Calculator.SummaryFor(Snapshot, drawn, State.WastePercent);
             <div class="stats">
                 <div class="stat"><span class="stat-value">@Format.Count(sum.Full)</span><span class="stat-label">Full pavers</span></div>
                 <div class="stat"><span class="stat-value">@Format.Count(sum.Cut)</span><span class="stat-label">Cut pavers</span></div>
@@ -64,7 +62,7 @@
 
         @if (Snapshot.TooLargeEstimate == 0)
         {
-            <CompareTable Rows="Calculator.Rows(Snapshot, State.WastePercent)" Current="State.Pattern" Pending="!Snapshot.AllLayoutsReady" OnSelect="OnSelectPattern" />
+            <CompareTable Rows="Calculator.Rows(Snapshot, State.WastePercent)" Current="drawn" Pending="!Snapshot.AllLayoutsReady" OnSelect="OnSelectPattern" />
         }
     }
 </section>

@@ -19,24 +19,24 @@
         @switch (State.Kind)
         {
             case ShapeKind.Rectangle:
-                <LengthField Label="Width" Placeholder="14'" @bind-Value="State.RectW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.w")" />
-                <LengthField Label="Height" Placeholder="12'" @bind-Value="State.RectH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.h")" />
+                <LengthField Label="Width" Placeholder="@ShapeExamples.RectW" @bind-Value="State.RectW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.w")" />
+                <LengthField Label="Height" Placeholder="@ShapeExamples.RectH" @bind-Value="State.RectH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("rect.h")" />
                 break;
             case ShapeKind.Triangle:
-                <LengthField Label="Side a" Placeholder="12'" @bind-Value="State.TriA" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.a")" />
-                <LengthField Label="Side b" Placeholder="10'" @bind-Value="State.TriB" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.b")" />
-                <LengthField Label="Side c" Placeholder="14'" @bind-Value="State.TriC" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.c")" />
+                <LengthField Label="Side a" Placeholder="@ShapeExamples.TriA" @bind-Value="State.TriA" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.a")" />
+                <LengthField Label="Side b" Placeholder="@ShapeExamples.TriB" @bind-Value="State.TriB" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.b")" />
+                <LengthField Label="Side c" Placeholder="@ShapeExamples.TriC" @bind-Value="State.TriC" @bind-Value:after="Changed" Error="@Eval.ErrorFor("tri.c")" />
                 break;
             case ShapeKind.LShape:
-                <LengthField Label="Width" Placeholder="14'" @bind-Value="State.LW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.w")" />
-                <LengthField Label="Height" Placeholder="12'" @bind-Value="State.LH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.h")" />
-                <LengthField Label="Notch width" Placeholder="6'" @bind-Value="State.LNotchW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nw")" />
-                <LengthField Label="Notch height" Placeholder="5'" @bind-Value="State.LNotchH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nh")" />
+                <LengthField Label="Width" Placeholder="@ShapeExamples.LW" @bind-Value="State.LW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.w")" />
+                <LengthField Label="Height" Placeholder="@ShapeExamples.LH" @bind-Value="State.LH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.h")" />
+                <LengthField Label="Notch width" Placeholder="@ShapeExamples.LNotchW" @bind-Value="State.LNotchW" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nw")" />
+                <LengthField Label="Notch height" Placeholder="@ShapeExamples.LNotchH" @bind-Value="State.LNotchH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("l.nh")" />
                 break;
             case ShapeKind.Trapezoid:
-                <LengthField Label="Bottom" Placeholder="16'" @bind-Value="State.TrapBottom" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.bottom")" />
-                <LengthField Label="Top" Placeholder="10'" @bind-Value="State.TrapTop" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.top")" />
-                <LengthField Label="Height" Placeholder="10'" @bind-Value="State.TrapH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.h")" />
+                <LengthField Label="Bottom" Placeholder="@ShapeExamples.TrapBottom" @bind-Value="State.TrapBottom" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.bottom")" />
+                <LengthField Label="Top" Placeholder="@ShapeExamples.TrapTop" @bind-Value="State.TrapTop" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.top")" />
+                <LengthField Label="Height" Placeholder="@ShapeExamples.TrapH" @bind-Value="State.TrapH" @bind-Value:after="Changed" Error="@Eval.ErrorFor("trap.h")" />
                 break;
         }
     </div>
@@ -73,7 +73,7 @@
 
     private Task OnKindChanged(ChangeEventArgs e)
     {
-        State.Kind = Enum.Parse<ShapeKind>(e.Value!.ToString()!);
+        State.SwitchKind(Enum.Parse<ShapeKind>(e.Value!.ToString()!));
         return Changed();
     }
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PATTERNS, computeLayout, perimeter, signedArea, summarize } from './engine';
+import { computeLayout, perimeter, signedArea, summarize } from './engine';
 import type { Pt } from './engine';
-import { DEFAULTS, hasShapeError, loadState, saveState, toNumber, validatePaver, validateShape } from './model';
+import {
+  DEFAULTS, drawnPattern, fallbackNote, hasShapeError, loadState, saveState, toNumber, validatePaver, validateShape,
+} from './model';
 import type { AppState } from './model';
 import { useCompareCounts } from './useCompareCounts';
 import { useLastValid } from './useLastValid';
@@ -53,10 +55,15 @@ export function App() {
   const offset = useMemo<Pt>(() => [toNumber(state.offsetX), toNumber(state.offsetY)], [state.offsetX, state.offsetY]);
   const waste = Math.max(0, toNumber(state.waste));
 
+  // The user's chosen pattern is kept as is; what gets drawn falls back to Running bond while the paver
+  // doesn't suit it (and switches back by itself when it does).
+  const drawn = drawnPattern(state.pattern, paver);
+  const patternNote = fallbackNote(state.pattern, drawn);
+
   // ---- layout for the drawing and results: only recomputed when its inputs change ----
   const layout = useMemo(
-    () => (shape && paver ? computeLayout(shape, paver, state.pattern, rotation, offset) : null),
-    [shape, paver, state.pattern, rotation, offset],
+    () => (shape && paver ? computeLayout(shape, paver, drawn, rotation, offset) : null),
+    [shape, paver, drawn, rotation, offset],
   );
   const areaSqIn = useMemo(() => (shape ? signedArea(shape) : 0), [shape]);
   const summary = useMemo(
@@ -80,10 +87,6 @@ export function App() {
     }));
   }, [compare, waste]);
 
-  const patternLabel = PATTERNS.find((p) => p.id === state.pattern)!.label;
-  const inapplicableNote = layout && !layout.applicable
-    ? `${patternLabel} needs a paver whose length is a whole multiple of its width (such as 2:1). Pick another pattern or change the paver.`
-    : null;
   let emptyNote = 'Draw or enter a shape to see results';
   if (hasShapeError(shapeResult)) {
     emptyNote = shapeResult.groupError ?? 'Enter valid dimensions to see results.';
@@ -115,18 +118,18 @@ export function App() {
         <div className="pane-right">
           <ShapeControls state={state} result={shapeResult} onChange={change} />
           <PaverControls state={state} result={paverResult} onChange={change} />
-          <PatternControls state={state} paver={paver} onChange={change} />
+          <PatternControls state={state} paver={paver} drawn={drawn} note={patternNote} onChange={change} />
           <Results
             summary={summary}
             areaSqIn={areaSqIn}
             stale={stale && summary !== null}
-            inapplicableNote={inapplicableNote}
+            patternNote={patternNote}
             emptyNote={emptyNote}
           />
           {compareInputs && compareRows.length > 0 && (
             <CompareTable
               rows={compareRows}
-              current={state.pattern}
+              current={drawn}
               updating={compare?.inputs !== compareInputs}
               onSelect={(pattern) => change({ pattern })}
             />

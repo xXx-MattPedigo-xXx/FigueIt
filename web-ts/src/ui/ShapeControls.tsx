@@ -1,4 +1,4 @@
-import { SHAPE_FIELDS, SHAPE_TYPES } from '../model';
+import { SHAPE_FIELDS, SHAPE_TYPES, switchShapeType } from '../model';
 import type { AppState, DimShapeType, ShapeResult, ShapeType } from '../model';
 import { Field } from './Field';
 
@@ -18,7 +18,7 @@ export function ShapeControls({ state, result, onChange }: Props) {
         <select
           id="shape-type"
           value={shapeType}
-          onChange={(e) => onChange({ shapeType: e.target.value as ShapeType })}
+          onChange={(e) => onChange(switchShapeType(state, e.target.value as ShapeType))}
         >
           {SHAPE_TYPES.map((t) => (
             <option key={t.id} value={t.id}>{t.label}</option>

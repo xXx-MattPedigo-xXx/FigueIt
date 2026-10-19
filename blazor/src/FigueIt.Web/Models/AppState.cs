@@ -41,6 +41,51 @@ public sealed class AppState
     public double OffsetX { get; set; }
     public double OffsetY { get; set; }
     public double WastePercent { get; set; } = 10;
+
+    /// <summary>
+    /// Picks a shape type from the selector. Each EMPTY field of that type gets its example value and any field that
+    /// already has text keeps it, so a shape appears at once (or the normal field error does, if the kept values and
+    /// the examples clash) and the user edits from there. Other types' fields are never touched, and switching to
+    /// Custom polygon keeps the points already drawn.
+    /// </summary>
+    public void SwitchKind(ShapeKind kind)
+    {
+        Kind = kind;
+        switch (kind)
+        {
+            case ShapeKind.Rectangle:
+                RectW = Fill(RectW, ShapeExamples.RectW);
+                RectH = Fill(RectH, ShapeExamples.RectH);
+                break;
+            case ShapeKind.Triangle:
+                TriA = Fill(TriA, ShapeExamples.TriA);
+                TriB = Fill(TriB, ShapeExamples.TriB);
+                TriC = Fill(TriC, ShapeExamples.TriC);
+                break;
+            case ShapeKind.LShape:
+                LW = Fill(LW, ShapeExamples.LW);
+                LH = Fill(LH, ShapeExamples.LH);
+                LNotchW = Fill(LNotchW, ShapeExamples.LNotchW);
+                LNotchH = Fill(LNotchH, ShapeExamples.LNotchH);
+                break;
+            case ShapeKind.Trapezoid:
+                TrapBottom = Fill(TrapBottom, ShapeExamples.TrapBottom);
+                TrapTop = Fill(TrapTop, ShapeExamples.TrapTop);
+                TrapH = Fill(TrapH, ShapeExamples.TrapH);
+                break;
+        }
+    }
+
+    private static string Fill(string? current, string example) => string.IsNullOrWhiteSpace(current) ? example : current;
+}
+
+/// <summary>The example value for each shape field: shown as the placeholder, and filled in when a type is picked.</summary>
+public static class ShapeExamples
+{
+    public const string RectW = "14'", RectH = "12'";
+    public const string TriA = "12'", TriB = "10'", TriC = "14'";
+    public const string LW = "14'", LH = "12'", LNotchW = "6'", LNotchH = "5'";
+    public const string TrapBottom = "16'", TrapTop = "10'", TrapH = "10'";
 }
 
 public sealed record PaverPreset(string Name, string Length, string Width);

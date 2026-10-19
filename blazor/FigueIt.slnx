@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FigueIt.Engine.Tests/FigueIt.Engine.Tests.csproj" />
+    <Project Path="tests/FigueIt.Web.Tests/FigueIt.Web.Tests.csproj" />
   </Folder>
 </Solution>

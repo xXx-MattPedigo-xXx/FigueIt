@@ -1,15 +1,22 @@
 @using FigueIt.Engine
 @using FigueIt.Web.Models
+@using FigueIt.Web.Services
 
 <section class="card">
     <h2>Pattern</h2>
+    @{
+        // The user's choice is kept in State.Pattern; the radio shows what is drawn, which differs while the paver doesn't suit it.
+        var drawn = Calculator.DrawnPattern(State.Pattern, Paver);
+    }
     <div class="pattern-list">
         @foreach (var id in Patterns.All)
         {
             var applicable = Paver is not { } paver || Patterns.IsApplicable(id, paver);
             <label class="pattern @(applicable ? null : "disabled")">
-                <input type="radio" name="pattern" checked="@(State.Pattern == id)" disabled="@(!applicable)"
-                       @onchange="() => Select(id)" />
+                @* onclick, not onchange: during a fallback the drawn pattern is already checked, and clicking it
+                   must still make it the chosen one (no change event fires for an already-checked radio). *@
+                <input type="radio" name="pattern" checked="@(drawn == id)" disabled="@(!applicable)"
+                       @onclick="() => Select(id)" />
                 <span>@id.Label()</span>
                 @if (!applicable)
                 {
@@ -18,6 +25,10 @@
             </label>
         }
     </div>
+    @if (Calculator.FallbackNote(State.Pattern, drawn) is { } note)
+    {
+        <p class="warning pattern-note">@note</p>
+    }
 </section>
 
 @code {

@@ -1,5 +1,5 @@
 // App state, defaults, persistence and input validation. No React in here.
-import { PATTERNS, buildShape, parseLength } from './engine';
+import { PATTERNS, buildShape, isApplicable, parseLength } from './engine';
 import type { Paver, PatternId, Pt, ShapeSpec } from './engine';
 
 export type ShapeType = 'rectangle' | 'triangle' | 'lshape' | 'trapezoid' | 'polygon';
@@ -60,6 +60,7 @@ export interface AppState {
   paverWidth: string;
   joint: string;
   preset: string;
+  /** The pattern the user chose. What is drawn may differ (see drawnPattern). */
   pattern: PatternId;
   rotation: string;
   offsetX: string;
@@ -230,6 +231,41 @@ export function validateShape(state: AppState): ShapeResult {
 
   const shape = buildShape(toShapeSpec(state, type));
   return { shape, fieldErrors, groupError: shape ? null : GROUP_ERRORS[type] };
+}
+
+// ---------- shape type switching ----------
+
+/**
+ * The state change for picking a shape type in the selector. Each EMPTY field of the new type is filled with
+ * its example value (the placeholder) and any field that already has text keeps it, so a shape appears straight
+ * away (or the normal field error does, if the kept values and the examples clash). Dim keys are shared between
+ * types (w/h by rectangle and L-shape, h by trapezoid), which is what lets a Rectangle 14' x 12' become an
+ * L-shape 14' x 12' with a 6' x 5' notch. Only the new type's own keys are touched. Custom polygon keeps its points.
+ */
+export function switchShapeType(state: AppState, type: ShapeType): Partial<AppState> {
+  if (type === 'polygon') return { shapeType: type };
+  const dims = { ...state.dims };
+  for (const f of SHAPE_FIELDS[type]) if ((dims[f.key] ?? '').trim() === '') dims[f.key] = f.placeholder;
+  return { shapeType: type, dims };
+}
+
+// ---------- chosen vs drawn pattern ----------
+
+/**
+ * The pattern that is actually drawn. The user's chosen pattern, unless it cannot be laid with the paver
+ * (herringbone and basketweave need a ~2:1 paver), in which case Running bond (always applicable).
+ * With no valid paver there is nothing to be inapplicable to, so the chosen pattern stands.
+ */
+export function drawnPattern(chosen: PatternId, paver: Paver | null): PatternId {
+  return paver && !isApplicable(chosen, paver) ? 'running' : chosen;
+}
+
+/** The note shown while the drawn pattern differs from the chosen one, or null when they match. */
+export function fallbackNote(chosen: PatternId, drawn: PatternId): string | null {
+  if (chosen === drawn) return null;
+  const name = PATTERNS.find((p) => p.id === chosen)!.label;
+  const used = PATTERNS.find((p) => p.id === drawn)!.label;
+  return `${name} needs a 2:1 paver like 4x8, so this layout uses ${used}. It switches back when the paver fits.`;
 }
 
 export interface PaverResult {

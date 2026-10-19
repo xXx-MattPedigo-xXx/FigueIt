@@ -33,6 +33,12 @@ share one website) on every change and restored on load, so a returning user see
 
 - Each type shows its text fields (Rectangle: width, height. Triangle: side a, b, c. L-shape: width, height,
   notch width, notch height. Trapezoid: bottom, top, height).
+- **Switching shape type never leaves the user on an empty grid by surprise.** When the user picks a type, fill
+  each of that type's **empty** fields with its example value (the same values as the placeholders), so the shape
+  appears immediately and the user edits from there. Fields that already hold a value keep it (for example,
+  Rectangle 14' x 12' -> L-shape keeps 14' x 12' and fills the notch with 6' x 5'). If the kept values plus the
+  examples are impossible (say a 5' wide rectangle gets a 6' notch), show the normal field error rather than a
+  blank grid. Only first run and Reset start blank. Switching to Custom polygon keeps any points already drawn.
 - Shape fields accept the length syntax in `SPEC.md` with **feet** as the default unit (`12`, `12'6"`, `12-6`).
 - An invalid or impossible field gets a red border and a one-line message (for example "sides can't form a triangle").
   While any field is invalid, the plotter keeps showing the last valid shape and results are marked out of date.
@@ -46,8 +52,17 @@ them in: 4x8 brick, 6x9, 6x6, 12x12, 16x16, 24x24, Custom (selected automaticall
 Joint default 1/8".
 
 **Pattern** - selector of the four patterns. A pattern that is not applicable to the current paver (see `SPEC.md`)
-is shown disabled with a note such as "needs a 2:1 paver". If the selected pattern becomes inapplicable, show
-a warning in the results and an empty layout (do not silently switch).
+is shown disabled with a note such as "needs a 2:1 paver".
+
+- The app remembers the pattern the user **chose**, separately from the pattern it **draws**. Normally they are
+  the same. If the chosen pattern is not applicable to the current paver, the app draws **Running bond** instead
+  (always applicable), and the pattern selector shows Running bond as the active one.
+- While that fallback is in effect, show a clear note near the pattern selector and in the results, for example:
+  "Herringbone needs a 2:1 paver like 4x8, so this layout uses Running bond. It switches back when the paver fits."
+- As soon as the paver makes the chosen pattern applicable again, draw the chosen pattern again automatically.
+- If the user picks a pattern themselves (in the selector or the compare table), that becomes the chosen pattern.
+- The layout is never left empty just because of the paver: a valid shape and valid paver always show pavers.
+- Saved state stores the chosen pattern. Results, counts and the compare-table "current" marker refer to the drawn pattern.
 
 **Rotation** - degrees (number field plus 0 / 45 / 90 quick buttons). **Offset** - x and y in inches
 (number fields); lets the user slide the pattern to change where the cuts land.

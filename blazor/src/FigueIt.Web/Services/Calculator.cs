@@ -48,6 +48,9 @@ public sealed class Snapshot
     /// <summary>Non-zero when the shape would need so many pavers that counting and drawing them is not sensible.</summary>
     public int TooLargeEstimate { get; init; }
 
+    /// <summary>The pattern that is drawn for this snapshot's paver when the user has chosen <paramref name="chosen"/>.</summary>
+    public PatternId Drawn(PatternId chosen) => Calculator.DrawnPattern(chosen, Paver);
+
     public bool HasLayout(PatternId id) => _layouts.ContainsKey(id);
 
     public bool AllLayoutsReady => TooLargeEstimate > 0 || Patterns.All.All(HasLayout);
@@ -74,6 +77,20 @@ public sealed record PatternRow(PatternId Id, Summary Summary, bool IsBest);
 public static class Calculator
 {
     public const int MaxPavers = 30_000;
+
+    /// <summary>
+    /// The pattern that is actually drawn. The user's chosen pattern, unless it cannot be laid with the paver
+    /// (herringbone and basketweave need a ~2:1 paver), in which case Running bond (always applicable).
+    /// With no valid paver there is nothing to be inapplicable to, so the chosen pattern stands.
+    /// </summary>
+    public static PatternId DrawnPattern(PatternId chosen, Paver? paver) =>
+        paver is { } p && !Patterns.IsApplicable(chosen, p) ? PatternId.Running : chosen;
+
+    /// <summary>The note shown while the drawn pattern differs from the chosen one, or null when they match.</summary>
+    public static string? FallbackNote(PatternId chosen, PatternId drawn) =>
+        chosen == drawn
+            ? null
+            : $"{chosen.Label()} needs a 2:1 paver like 4x8, so this layout uses {drawn.Label()}. It switches back when the paver fits.";
 
     public static Evaluation Evaluate(AppState s)
     {
